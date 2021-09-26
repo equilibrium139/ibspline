@@ -58,6 +58,32 @@ void BSpline::AddControlPoint(Point p)
 	control_points.push_back(p);
 }
 
+void BSpline::AddControlPoint(int existing_control_point_index)
+{
+	assert(existing_control_point_index >= degree && existing_control_point_index < control_points.size() - 1);
+
+	float new_knot_value = (knots[existing_control_point_index] + knots[existing_control_point_index + 1]) / 2.0f;
+	knots.insert(knots.begin() + existing_control_point_index + 1, new_knot_value);
+	const int h = existing_control_point_index;
+	const int k = degree + 1;
+	const int n = control_points.size() - 1;
+	std::vector<Point> new_control_points(control_points.size() + 1);
+	for (int i = 0; i <= h - degree; i++)
+	{
+		new_control_points[i] = control_points[i];
+	}
+	for (int i = h + 1; i <= n + 1; i++)
+	{
+		new_control_points[i] = control_points[i - 1];
+	}
+	for (int i = h - degree + 1; i <= h; i++)
+	{
+		const float alpha = (new_knot_value - knots[i]) / (knots[i + k - 1] - knots[i]);
+		new_control_points[i] = (1 - alpha) * control_points[i - 1] + alpha * control_points[i];
+	}
+	control_points = new_control_points;
+}
+
 void BSpline::SetPoint(int index, Point new_point)
 {
 	control_points[index] = new_point;
@@ -81,6 +107,13 @@ void BSpline::Save(const char* path) const
 	std::ofstream file(path);
 	file << "BSPLINE\n";
 	file << dimension << " " << n_points << " " << degree << '\n';
+
+	for (float knot : knots)
+	{
+		file << knot << ' ';
+	}
+
+	file << '\n';
 
 	for (Point point : control_points)
 	{

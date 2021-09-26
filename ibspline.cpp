@@ -3,6 +3,8 @@
 #include <iostream>
 #include <string>
 #include "BSpline.h"
+#include "Button.h"
+#include "Point.h"
 
 TTF_Font* sans;
 SDL_Texture* axis_number_textures[10];
@@ -15,7 +17,10 @@ const int max_graph_x = graph_area.w + graph_area.x - 1;
 const int max_graph_y = graph_area.h + graph_area.y - 1;
 int selected_control_point_index = -1;
 BSpline bspline;
+bool adding_new_control_point = false;
 bool running = true;
+Button addcp_button;
+Button save_button;
 
 SDL_Texture* TextureFromText(const char* text, SDL_Color color, SDL_Renderer* renderer);
 void InitializeAxisNumberTextures(SDL_Renderer* renderer);
@@ -24,6 +29,7 @@ void DrawPoints(SDL_Renderer* renderer);
 void DrawAxisIndicators(SDL_Renderer* renderer);
 void MoveSelectedControlPoint(int x, int y);
 void DrawBSpline(SDL_Renderer* renderer);
+void DrawButtons(SDL_Renderer* renderer);
 
 int main(int argc, char** argv)
 {
@@ -60,6 +66,9 @@ int main(int argc, char** argv)
 
 	sans = TTF_OpenFont("OpenSans-Regular.ttf", 12);
 	InitializeAxisNumberTextures(renderer);
+	SDL_Color black = { 0, 0, 0};
+	addcp_button = Button({ 800, 100, 50, 25 }, "Add CP", black, sans, renderer);
+	save_button = Button({ 800, 175, 50, 25}, "Save", black, sans, renderer);
 
 	while (running)
 	{
@@ -68,14 +77,13 @@ int main(int argc, char** argv)
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
 		SDL_RenderClear(renderer);
 
-		SDL_SetRenderDrawColor(renderer, 255, 255, 0, SDL_ALPHA_OPAQUE);
 		DrawPoints(renderer);
 		DrawAxisIndicators(renderer);
 		if (bspline.Complete())
 		{
-			 DrawBSpline(renderer);
+			DrawBSpline(renderer);
+			DrawButtons(renderer);
 		}
-		// DrawButtons(renderer);
 		SDL_RenderPresent(renderer);
 	}
 
@@ -105,10 +113,9 @@ SDL_Texture* TextureFromText(const char* text, SDL_Color color, SDL_Renderer* re
 
 void SetSelectedControlPoint(int mouse_x, int mouse_y)
 {
-	auto& control_points = bspline.ControlPoints();
-	for (int i = 0; i < control_points.size(); i++)
+	for (int i = 0; i < bspline.ControlPoints().size(); i++)
 	{
-		ScreenPoint control_point_screen_location = GetScreenPoint(control_points[i]);
+		ScreenPoint control_point_screen_location = GetScreenPoint(bspline.ControlPoints()[i]);
 		if (std::abs(control_point_screen_location.x - mouse_x) < 10 &&
 			std::abs(control_point_screen_location.y - mouse_y) < 10)
 		{
@@ -121,7 +128,7 @@ void SetSelectedControlPoint(int mouse_x, int mouse_y)
 	if (!bspline.Complete())
 	{
 		bspline.AddControlPoint(Normalize(mouse_x, mouse_y));
-		selected_control_point_index = control_points.size() - 1;
+		selected_control_point_index = bspline.ControlPoints().size() - 1;
 	}
 	else
 	{
@@ -144,6 +151,22 @@ void PollEvents()
 			if (SDL_PointInRect(&p, &graph_area))
 			{
 				SetSelectedControlPoint(event.button.x, event.button.y);
+
+				if (adding_new_control_point && selected_control_point_index >= bspline.Degree() &&
+					selected_control_point_index < bspline.ControlPoints().size() - 1)
+				{
+					bspline.AddControlPoint(selected_control_point_index);
+					selected_control_point_index = -1;
+					adding_new_control_point = false;
+				}
+			}
+			else if (addcp_button.PointInRect(p) && bspline.Complete())
+			{
+				adding_new_control_point = !adding_new_control_point;
+			}
+			else if (save_button.PointInRect(p) && bspline.Complete())
+			{
+				bspline.Save("bspline.txt");
 			}
 		}
 		else if (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT)
@@ -165,7 +188,7 @@ void PollEvents()
 		}
 		else if (event.type == SDL_MOUSEMOTION)
 		{
-			if (selected_control_point_index != -1)
+			if (selected_control_point_index >= 0 && !adding_new_control_point)
 			{
 				MoveSelectedControlPoint(event.motion.x, event.motion.y);
 			}
@@ -186,6 +209,7 @@ void MoveSelectedControlPoint(int x, int y)
 
 void DrawBSpline(SDL_Renderer* renderer)
 {
+	SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
 	std::vector<Point> polyline = bspline.GetPolyLine();
 	for (int i = 0; i < polyline.size() - 1; i++)
 	{
@@ -195,10 +219,26 @@ void DrawBSpline(SDL_Renderer* renderer)
 	}
 }
 
+void DrawButtons(SDL_Renderer* renderer)
+{
+	addcp_button.Draw(renderer);
+	save_button.Draw(renderer);
+}
+
 void DrawPoints(SDL_Renderer* renderer)
 {
-	for (Point point : bspline.ControlPoints())
+
+	for (int i = 0; i < bspline.ControlPoints().size(); i++)
 	{
+		Point point = bspline.ControlPoints()[i];
+		if (adding_new_control_point && i >= bspline.Degree() && i < bspline.ControlPoints().size() - 1)
+		{
+			SDL_SetRenderDrawColor(renderer, 0, 255, 0, SDL_ALPHA_OPAQUE);
+		}
+		else
+		{
+			SDL_SetRenderDrawColor(renderer, 255, 255, 0, SDL_ALPHA_OPAQUE);
+		}
 		ScreenPoint control_point_screen_location = GetScreenPoint(point);
 		SDL_Rect point_rect;
 		point_rect.x = control_point_screen_location.x - 2;

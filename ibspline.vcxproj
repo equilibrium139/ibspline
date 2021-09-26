@@ -148,10 +148,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BSpline.cpp" />
+    <ClCompile Include="Button.cpp" />
     <ClCompile Include="ibspline.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BSpline.h" />
+    <ClInclude Include="Button.h" />
     <ClInclude Include="Point.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
