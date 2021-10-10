@@ -17,9 +17,10 @@ public:
 	void AddControlPoint(int existing_control_point_index);
 	void SetPoint(int index, Point new_point);
 	const std::vector<Point> ControlPoints() const;
+	// Indicates if the spline has been supplied enough points to be drawn
 	bool Complete() const;
 	void Save(const char* path) const;
-	std::vector<Point> GetPolyLine(int steps = 100) const;
+	std::vector<Point> GetPolyLine(int steps = 1000) const;
 	int Degree() const { return degree; }
 private:
 	static Point DeBoor(const BSpline& bspline, float u);

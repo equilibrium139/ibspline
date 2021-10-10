@@ -17,7 +17,7 @@ const int max_graph_x = graph_area.w + graph_area.x - 1;
 const int max_graph_y = graph_area.h + graph_area.y - 1;
 int selected_control_point_index = -1;
 BSpline bspline;
-bool adding_new_control_point = false;
+bool adding_new_control_point = false; // Indicates if the user has pressed the addcp_button
 bool running = true;
 Button addcp_button;
 Button save_button;
@@ -43,6 +43,11 @@ int main(int argc, char** argv)
 	if (std::isdigit(argument[0]))
 	{
 		int num_points = std::stoi(argument);
+		if (argc < 3)
+		{
+			std::cout << "Usage: ibspline [num_points] [degree] or ibspline [filename]\n";
+			return -1;
+		}
 		argument = argv[2];
 		int degree = std::stoi(argument);
 		if (degree >= num_points)
@@ -147,8 +152,9 @@ void PollEvents()
 		}
 		else if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT)
 		{
-			SDL_Point p = { event.button.x, event.button.y };
-			if (SDL_PointInRect(&p, &graph_area))
+			SDL_Point click_screen_location = { event.button.x, event.button.y };
+
+			if (SDL_PointInRect(&click_screen_location, &graph_area))
 			{
 				SetSelectedControlPoint(event.button.x, event.button.y);
 
@@ -160,11 +166,11 @@ void PollEvents()
 					adding_new_control_point = false;
 				}
 			}
-			else if (addcp_button.PointInRect(p) && bspline.Complete())
+			else if (addcp_button.PointInRect(click_screen_location) && bspline.Complete())
 			{
 				adding_new_control_point = !adding_new_control_point;
 			}
-			else if (save_button.PointInRect(p) && bspline.Complete())
+			else if (save_button.PointInRect(click_screen_location) && bspline.Complete())
 			{
 				bspline.Save("bspline.txt");
 			}
@@ -172,19 +178,6 @@ void PollEvents()
 		else if (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT)
 		{
 			selected_control_point_index = -1;
-
-			/*SDL_Point p = { event.button.x, event.button.y };
-			if (SDL_PointInRect(&p, &subdivide_button_rect))
-			{
-				if (curve.Complete())
-				{
-					curve.Subdivide();
-				}
-			}
-			else if (SDL_PointInRect(&p, &save_button_rect))
-			{
-				curve.Save("curve.txt");
-			}*/
 		}
 		else if (event.type == SDL_MOUSEMOTION)
 		{
@@ -231,6 +224,8 @@ void DrawPoints(SDL_Renderer* renderer)
 	for (int i = 0; i < bspline.ControlPoints().size(); i++)
 	{
 		Point point = bspline.ControlPoints()[i];
+		// Indicate which points can be selected for the control point insertion algorithm by coloring them
+		// green
 		if (adding_new_control_point && i >= bspline.Degree() && i < bspline.ControlPoints().size() - 1)
 		{
 			SDL_SetRenderDrawColor(renderer, 0, 255, 0, SDL_ALPHA_OPAQUE);

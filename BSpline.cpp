@@ -62,6 +62,8 @@ void BSpline::AddControlPoint(int existing_control_point_index)
 {
 	assert(existing_control_point_index >= degree && existing_control_point_index < control_points.size() - 1);
 
+	// Boehm knot insertion algorithm
+
 	float new_knot_value = (knots[existing_control_point_index] + knots[existing_control_point_index + 1]) / 2.0f;
 	knots.insert(knots.begin() + existing_control_point_index + 1, new_knot_value);
 	const int h = existing_control_point_index;
@@ -137,6 +139,7 @@ std::vector<Point> BSpline::GetPolyLine(int steps) const
 Point BSpline::DeBoor(const BSpline& bspline, float u)
 {
 	const std::vector<float>& t = bspline.knots; 
+	// Calculate the index j of the first knot which has value > u.
 	int j = -1;
 	for (int i = 1; i < t.size(); i++)
 	{
@@ -150,18 +153,18 @@ Point BSpline::DeBoor(const BSpline& bspline, float u)
 	assert(j != -1);
 
 	const int k = bspline.degree + 1;
-	std::vector<std::vector<Point>> levels(k);
-	for (auto& level : levels) level.resize(bspline.control_points.size());
-	levels[0] = bspline.control_points;
+	std::vector<std::vector<Point>> p(k);
+	for (auto& level : p) level.resize(bspline.control_points.size());
+	p[0] = bspline.control_points;
 
 	for (int r = 1; r <= bspline.degree; r++)
 	{
 		for (int i = j - k + 1 + r; i <= j; i++)
 		{
-			levels[r][i] = (1 - (u - t[i]) / (t[i + k - r] - t[i])) * levels[r - 1][i - 1] +
-				((u - t[i]) / (t[i + k - r] - t[i])) * levels[r - 1][i];
+			p[r][i] = (1 - (u - t[i]) / (t[i + k - r] - t[i])) * p[r - 1][i - 1] +
+				((u - t[i]) / (t[i + k - r] - t[i])) * p[r - 1][i];
 		}
 	}
 
-	return levels[bspline.degree][j];
+	return p[bspline.degree][j];
 }
